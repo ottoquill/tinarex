@@ -1,0 +1,44 @@
+# Tina Tiny T. Rex — Hugo configuration
+# Theme: hugo-book (https://github.com/alex-shpak/hugo-book), added as a git submodule.
+
+# baseURL is the live site address. Update this to your real domain after the
+# CloudFlare Pages project exists (see DEPLOYMENT.md). The *.pages.dev default
+# is a safe placeholder and does not break local preview.
+baseURL = 'https://tinarex.pages.dev/'
+languageCode = 'en-us'
+title = 'Tina Tiny T. Rex'
+theme = 'hugo-book'
+
+# hugo-book recommends these.
+disablePathToLower = true
+enableGitInfo = false
+
+[params]
+  # Which content section holds the book/story pages.
+  BookSection = 'docs'
+
+  # Light theme — friendliest for young readers.
+  BookTheme = 'light'
+
+  # Table of contents on the right of each chapter.
+  BookToC = true
+
+  # Search box in the sidebar.
+  BookSearch = true
+
+  # No comment system on a children's book.
+  BookComments = false
+
+  # Link back to the source repository (shown in the footer).
+  BookRepo = 'https://github.com/ottoquill/tinarex'
+
+  # Friendly date format if a chapter ever shows a date.
+  BookDateFormat = 'January 2, 2006'
+
+[markup]
+  [markup.goldmark.renderer]
+    # Allow simple inline HTML in chapters (e.g. a centered "The End").
+    unsafe = true
+  [markup.tableOfContents]
+    startLevel = 2
+    endLevel = 3
