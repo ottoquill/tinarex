@@ -16,9 +16,12 @@ Audience: **early readers, ages 6–9** (also read aloud by a parent).
 **Never deploy from this machine. Never run a deploy.**
 
 This site is a Cloudflare **Workers static-assets** project (Workers Builds),
-configured by [`wrangler.jsonc`](wrangler.jsonc). The deploy runs **inside
-Cloudflare's build environment** on a git push — `hugo --gc --minify` then
-`npx wrangler deploy` — never on a developer machine.
+configured by [`wrangler.jsonc`](wrangler.jsonc). On a git push, Cloudflare
+runs `npx wrangler deploy`, which itself runs the build via the
+`build.command` in `wrangler.jsonc` (`git submodule update … && hugo --gc
+--minify`) and then uploads `public/`. All **inside Cloudflare's build
+environment** — never on a developer machine. No dashboard "Build command"
+is needed.
 
 - Do **not** run `wrangler deploy`, `wrangler dev`, `hugo deploy`, or any
   command that uploads the site. `wrangler` runs in Cloudflare's build, here.

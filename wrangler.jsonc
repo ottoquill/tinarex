@@ -1,21 +1,31 @@
 {
   // Cloudflare Workers static-assets deployment for the Tina Tiny T. Rex site.
   //
-  // How a deploy works (all of this runs in Cloudflare Workers Builds on a
-  // git push — NEVER from a developer machine; see DEPLOYMENT.md):
-  //   1. Build command (set in the dashboard): `hugo --gc --minify`
+  // This config makes `npx wrangler deploy` FULLY SELF-CONTAINED, so the
+  // deploy no longer depends on a dashboard "Build command" being set:
+  //   1. build.command runs first: fetch the theme submodule, then run Hugo
   //      -> produces the static site in ./public
-  //   2. Deploy command: `npx wrangler deploy`
-  //      -> reads THIS file and uploads ./public as a static-assets Worker
+  //   2. assets.directory (./public) is uploaded as a static-assets Worker
   //
-  // Committing this file is what stops wrangler from auto-detecting the wrong
-  // build command (`npx hugo`, which fails — Hugo is a binary, not an npm pkg).
+  // All of this runs in Cloudflare Workers Builds on a git push — NEVER from
+  // a developer machine. See DEPLOYMENT.md.
+  //
+  // Keep this file committed: without it, `npx wrangler deploy` auto-detects
+  // the wrong build command (`npx hugo`) and fails.
 
   // Must match the existing Worker name in Cloudflare.
   "name": "tinarex",
 
   // Required by wrangler. Largely moot for an assets-only Worker (no script).
   "compatibility_date": "2026-05-15",
+
+  // Runs before the deploy. `git submodule ...` guarantees the hugo-book
+  // theme is present even if Workers Builds didn't fetch submodules; then
+  // Hugo builds the site. `hugo` is a native binary already installed in the
+  // build image — do NOT use `npx hugo` (there is no such npm package).
+  "build": {
+    "command": "git submodule update --init --recursive && hugo --gc --minify"
+  },
 
   // Static-assets-only Worker: no "main" entrypoint, just serve ./public.
   "assets": {

@@ -1,116 +1,107 @@
 # Deployment — Cloudflare Workers Builds (static assets) via the GitHub app
 
-This site deploys **automatically**. Nobody (and no agent) deploys from a
-laptop. The flow is:
+This site deploys **automatically** on a git push. Nobody (and no agent)
+deploys from a laptop. The flow:
 
 ```
-git push  →  GitHub  →  Cloudflare GitHub app  →  Workers Builds:
-                                                     hugo --gc --minify
+git push  →  GitHub  →  Cloudflare GitHub app  →  Workers Builds runs:
                                                      npx wrangler deploy
+                                                       └─ build.command:
+                                                          git submodule update …
+                                                          hugo --gc --minify
+                                                       └─ upload ./public
                                                    →  live
 ```
 
 Cloudflare created this as a **Workers** project (not a classic Pages
-project). It builds the Hugo site and deploys `public/` as a
-**static-assets-only Worker**. The deploy mechanism (`wrangler`) runs **inside
-Cloudflare's build environment**, triggered by the git push — never from a
-developer machine.
+project). It deploys `public/` as a **static-assets-only Worker**. Everything
+runs **inside Cloudflare's build environment**, triggered by the push — never
+from a developer machine.
 
-## The repo half (already done)
+## The build is repo-driven (important)
 
-[`wrangler.jsonc`](wrangler.jsonc) is committed and tells `wrangler deploy`
-exactly what to ship:
+[`wrangler.jsonc`](wrangler.jsonc) is committed and makes `npx wrangler
+deploy` self-contained — it builds the site itself via `build.command`:
 
 ```jsonc
 {
   "name": "tinarex",
   "compatibility_date": "2026-05-15",
+  "build": {
+    "command": "git submodule update --init --recursive && hugo --gc --minify"
+  },
   "assets": { "directory": "public", "not_found_handling": "404-page" }
 }
 ```
 
-**Why this file matters:** without it, `npx wrangler deploy` runs in
-auto-detection mode, guesses the build command is `npx hugo`, and fails with
-`npm error could not determine executable to run` (Hugo is a native binary,
-not an npm package). Keep `wrangler.jsonc` committed.
+So you do **not** need to set a dashboard "Build command". Two earlier builds
+failed because of that field:
 
-## The dashboard half (one-time, do this in Cloudflare)
+| Symptom | Cause | Fixed by |
+|---------|-------|----------|
+| `npx hugo` → `npm error could not determine executable to run` | No `wrangler.jsonc`; wrangler auto-detected `npx hugo` (Hugo isn't an npm package) | Committing `wrangler.jsonc` |
+| `assets.directory … does not exist: …/public` | `wrangler.jsonc` present, but nothing built `public/` (no build step ran) | `build.command` in `wrangler.jsonc` (builds before deploy) |
 
-Cloudflare dashboard → **Workers & Pages** → the **`tinarex`** project →
-**Settings** → **Builds**:
+`build.command` runs *before* the assets are resolved, and `git submodule
+update` guarantees the `hugo-book` theme is present even if Workers Builds
+didn't fetch submodules.
 
-| Setting          | Value                | Notes |
-|------------------|----------------------|-------|
-| Git repository   | `ottoquill/tinarex`  | via the Cloudflare GitHub app |
-| Production branch | `main` (or `setup` for now) | the branch whose builds go live |
-| Build command    | `hugo --gc --minify` | **change this** — it was auto-set to the broken `npx hugo` |
-| Deploy command   | `npx wrangler deploy`| reads `wrangler.jsonc`, uploads `public/` |
-| Build output     | *(leave blank)* | `wrangler.jsonc`'s `assets.directory` controls this |
+## Dashboard settings (Cloudflare → Workers & Pages → `tinarex`)
 
-Environment variables (Settings → Variables, for Production **and** Preview):
+Settings → **Builds**:
+
+| Setting          | Value                 | Notes |
+|------------------|-----------------------|-------|
+| Git repository   | `ottoquill/tinarex`   | via the Cloudflare GitHub app |
+| Production branch | `main` (or `setup` while iterating) | the branch whose builds go live |
+| **Build command** | *(leave EMPTY)*      | `wrangler.jsonc`'s `build.command` does the build |
+| Deploy command   | `npx wrangler deploy` | the default — leave as-is |
+
+> If a dashboard Build command is set, it's harmless (Hugo just runs twice),
+> but leaving it empty keeps the build defined in one place: `wrangler.jsonc`.
+
+Environment variables (Settings → Variables, Production **and** Preview):
 
 | Variable       | Value     | Why |
 |----------------|-----------|-----|
-| `HUGO_VERSION` | `0.159.0` | Pin Hugo. Must be ≥ 0.158.0 (theme minimum) and match local Hugo. Cloudflare detected `hugo@extended_0.159.0` automatically, but pin it so a build-image change can't move it. |
+| `HUGO_VERSION` | `0.159.0` | Pin Hugo ≥ 0.158.0 (theme minimum). Cloudflare auto-detects `hugo@extended_0.159.0`; pinning prevents a build-image change from moving it. |
 
-Submodules (the `hugo-book` theme) are cloned by Workers Builds automatically —
-no extra configuration.
-
-Save, then **Retry deployment** (or push a commit). A successful build ends
-with a `…workers.dev` (or custom-domain) URL.
-
-## What the *failed* build looked like (for reference)
-
-```
-Executing user deploy command: npx wrangler deploy
- - Build Command: npx hugo            ← wrong (auto-detected, no wrangler.jsonc)
-[build] Running: npx hugo
-[build] npm error could not determine executable to run   ← Hugo isn't npm
-✘ Running custom build `npx hugo` failed.
-```
-
-Both halves above fix this: `wrangler.jsonc` stops the bad auto-detection, and
-the dashboard build command becomes `hugo --gc --minify`.
+After this, **Retry deployment** or push a commit.
 
 ## How deploys happen from now on
 
-- **Push to the production branch** → Workers Builds builds and updates the
-  **live** site.
-- **Push to any other branch / open a PR** → a **preview** build at a unique
-  URL, for review before it goes live (if preview builds are enabled for the
-  project).
+- **Push the production branch** → builds and updates the **live** site.
+- **Push another branch / open a PR** → a **preview** deployment at a unique
+  URL (if preview builds are enabled).
 - No manual action, no local CLI, no secrets in the repo.
 
 ## After the first successful deploy
 
 - Update `baseURL` in [`hugo.toml`](hugo.toml) to the real URL and push.
-- **Custom domain** (optional): project → **Domains & Routes** → add the
-  domain and follow the DNS instructions.
+- **Custom domain** (optional): project → **Domains & Routes**.
 
-## Verify a build locally before pushing (does NOT deploy)
+## Verify locally before pushing (does NOT deploy)
 
 ```bash
-hugo --gc --minify   # must finish with 0 errors / no broken refs
+git submodule update --init --recursive && hugo --gc --minify
 ```
 
-This only produces the local `public/` folder (gitignored). It never runs
-`wrangler` and never uploads anything — it just proves the build half will
-succeed in Cloudflare.
+This is exactly what `wrangler.jsonc`'s `build.command` runs in Cloudflare. It
+only produces the local `public/` folder (gitignored); it never runs
+`wrangler` and never uploads anything.
 
 ## Troubleshooting
 
-- **`npm error could not determine executable to run` / `npx hugo` fails** —
-  the dashboard build command is still `npx hugo`. Change it to
-  `hugo --gc --minify`. Confirm `wrangler.jsonc` is committed on the branch
-  being built.
-- **`wrangler deploy` can't find assets / deploys nothing** — `public/`
-  wasn't built. The build command must run **before** the deploy command and
-  must be `hugo --gc --minify` (not `npx hugo`).
-- **Theme missing / empty `themes/hugo-book`** — submodule not fetched;
-  ensure the project uses the Git integration (Workers Builds fetches
-  submodules automatically).
+- **`assets.directory … does not exist`** — `build.command` didn't run or
+  didn't produce `public/`. Confirm `wrangler.jsonc` (with its `build` block)
+  is committed on the branch being built; check the build log for the Hugo
+  output.
+- **`npx hugo` / `could not determine executable to run`** — `wrangler.jsonc`
+  is missing on that branch, so wrangler auto-detected the wrong command.
+- **Theme missing / empty `themes/hugo-book`** — the `git submodule update`
+  in `build.command` covers this; if it still fails, check build-log network
+  access to `github.com`.
 - **Wrong Hugo version / unknown config keys** — set/raise `HUGO_VERSION` to
-  match local Hugo and the theme minimum (≥ 0.158.0).
-- **Old content after a push** — check the project's **Deployments** /
-  **Builds** tab; the Cloudflare GitHub app may need re-authorization if it
-  lost repo access.
+  match the theme minimum (≥ 0.158.0).
+- **Old content after a push** — check the project's **Builds** /
+  **Deployments** tab; the Cloudflare GitHub app may need re-authorization.
