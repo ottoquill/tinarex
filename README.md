@@ -5,7 +5,7 @@ Valley — for early readers, ages 6–9.
 
 Built with [Hugo](https://gohugo.io/) and the
 [hugo-book](https://github.com/alex-shpak/hugo-book) theme. Deployed by
-**CloudFlare Pages** automatically on every push (see
+**Cloudflare Workers Builds** automatically on every push (see
 [`DEPLOYMENT.md`](DEPLOYMENT.md)).
 
 ## Get started
@@ -34,5 +34,6 @@ guide for this age group, and the character bible. Read it before contributing
 
 ## Deployment
 
-You don't deploy by hand. Push to a branch for a CloudFlare **preview**, or to
-`main` for the **live** site. Details in [`DEPLOYMENT.md`](DEPLOYMENT.md).
+You don't deploy by hand. Cloudflare Workers Builds builds and deploys on
+push. Push to a branch for a **preview**, or to the production branch for the
+**live** site. Details in [`DEPLOYMENT.md`](DEPLOYMENT.md).

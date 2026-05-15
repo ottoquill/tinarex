@@ -1,0 +1,26 @@
+{
+  // Cloudflare Workers static-assets deployment for the Tina Tiny T. Rex site.
+  //
+  // How a deploy works (all of this runs in Cloudflare Workers Builds on a
+  // git push — NEVER from a developer machine; see DEPLOYMENT.md):
+  //   1. Build command (set in the dashboard): `hugo --gc --minify`
+  //      -> produces the static site in ./public
+  //   2. Deploy command: `npx wrangler deploy`
+  //      -> reads THIS file and uploads ./public as a static-assets Worker
+  //
+  // Committing this file is what stops wrangler from auto-detecting the wrong
+  // build command (`npx hugo`, which fails — Hugo is a binary, not an npm pkg).
+
+  // Must match the existing Worker name in Cloudflare.
+  "name": "tinarex",
+
+  // Required by wrangler. Largely moot for an assets-only Worker (no script).
+  "compatibility_date": "2026-05-15",
+
+  // Static-assets-only Worker: no "main" entrypoint, just serve ./public.
+  "assets": {
+    "directory": "public",
+    // Serve Hugo's generated 404.html for unknown paths.
+    "not_found_handling": "404-page"
+  }
+}

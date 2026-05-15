@@ -15,15 +15,25 @@ Audience: **early readers, ages 6–9** (also read aloud by a parent).
 
 **Never deploy from this machine. Never run a deploy.**
 
-- Do **not** run `wrangler`, `hugo deploy`, `npx wrangler pages publish`, or any
-  command that uploads the site anywhere.
+This site is a Cloudflare **Workers static-assets** project (Workers Builds),
+configured by [`wrangler.jsonc`](wrangler.jsonc). The deploy runs **inside
+Cloudflare's build environment** on a git push — `hugo --gc --minify` then
+`npx wrangler deploy` — never on a developer machine.
+
+- Do **not** run `wrangler deploy`, `wrangler dev`, `hugo deploy`, or any
+  command that uploads the site. `wrangler` runs in Cloudflare's build, here.
 - Do **not** add GitHub Actions / CI that builds or deploys.
-- The **only** deploy path is: push to GitHub → CloudFlare Pages' GitHub app
-  sees the push → CloudFlare builds and deploys. See `DEPLOYMENT.md`.
-- Pushing the **`main`** branch publishes the **live** site. Treat `main` with
-  care. Do feature work on a branch and let the user merge.
+- The **only** deploy path: push to GitHub → Cloudflare's GitHub app sees the
+  push → Workers Builds runs the build + `wrangler deploy`. See
+  `DEPLOYMENT.md`.
+- Pushing the **`main`** branch (the production branch) publishes the **live**
+  site. Treat `main` with care. Do feature work on a branch; let the user
+  merge.
 - Building locally with `hugo` is for **preview/verification only** — that
   output (`public/`) is gitignored and must never be committed.
+- [`wrangler.jsonc`](wrangler.jsonc) **must** stay committed. If it's missing,
+  wrangler auto-detects `npx hugo` as the build command and the deploy fails
+  (Hugo is a binary, not an npm package). Don't delete or .gitignore it.
 
 If asked to "deploy", explain that deployment happens automatically on push and
 that you cannot and should not trigger it directly.
@@ -121,8 +131,8 @@ at real chapter URLs, not `/`:
 
 ## Theme (hugo-book) is a git submodule
 
-- Added at `themes/hugo-book`. CloudFlare Pages clones submodules
-  automatically, so no extra deploy config is needed.
+- Added at `themes/hugo-book`. Cloudflare Workers Builds clones submodules
+  automatically, so no extra deploy config is needed for the theme.
 - Don't hand-edit files under `themes/hugo-book/`. To customize, override the
   layout/partial by copying it into the project root `layouts/` directory.
 - After `git clone`, run `git submodule update --init --recursive`.

@@ -1,9 +1,9 @@
 # Tina Tiny T. Rex — Hugo configuration
 # Theme: hugo-book (https://github.com/alex-shpak/hugo-book), added as a git submodule.
 
-# baseURL is the live site address. Update this to your real domain after the
-# CloudFlare Pages project exists (see DEPLOYMENT.md). The *.pages.dev default
-# is a safe placeholder and does not break local preview.
+# baseURL is the live site address. Update this to the real URL after the
+# first successful Cloudflare deploy (see DEPLOYMENT.md). The placeholder
+# below is safe and does not break local preview.
 baseURL = 'https://tinarex.pages.dev/'
 languageCode = 'en-us'
 title = 'Tina Tiny T. Rex'
